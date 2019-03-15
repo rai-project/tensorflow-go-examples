@@ -63,13 +63,13 @@ func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 
 
 	for ii := 0; ii < height; ii++ {
 		for jj := 0; jj < width; jj++ {
-			if mask[ii][jj] > 0.5 {
+			if mask[ii][jj] > 0.2 {
 				seg.Set(jj, ii, col)
 			}
 		}
 	}
 
-	segScaled := imaging.Resize(seg, int(y2)-int(y1), int(x2)-int(x1), imaging.NearestNeighbor)
+	segScaled := imaging.Resize(seg, int(x2)-int(x1), int(y2)-int(y1), imaging.NearestNeighbor)
 
 	out, _ := os.Create("/tmp/test.png")
 	defer out.Close()
@@ -87,8 +87,6 @@ func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 
 	
 	return rgba
 }
-
-
 
 func ToPng(filePath string, imgByte []byte, bounds image.Rectangle) {
 	img := imagetypes.NewRGBImage(bounds)
