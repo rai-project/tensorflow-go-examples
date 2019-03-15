@@ -186,6 +186,26 @@ func MakeTensorFromImage(filename string) (*tf.Tensor, image.Image, error) {
 	return normalized[0], img, nil
 }
 
+func ReshapeTensorFloats(data [][]float32, shape []int64) (*tf.Tensor, error) {
+	N, H, W, C := shape[0], shape[1], shape[2], shape[3]
+	tensor := make([][][][]float32, N)
+	for n := int64(0); n < N; n++ {
+		ndata := data[n]
+		tn := make([][][]float32, H)
+		for h := int64(0); h < H; h++ {
+			th := make([][]float32, W)
+			for w := int64(0); w < W; w++ {
+				offset := C * (W*h + w)
+				tw := ndata[offset : offset+C]
+				th[w] = tw
+			}
+			tn[h] = th
+		}
+		tensor[n] = tn
+	}
+	return tf.NewTensor(tensor)
+}
+
 func DecodeJpegGraph() (graph *tf.Graph, input, output tf.Output, err error) {
 	s := op.NewScope()
 	input = op.Placeholder(s, tf.String)
@@ -218,4 +238,44 @@ func TensorData(c *C.TF_Tensor) []byte {
 	length := int(C.TF_TensorByteSize(c))
 	slice := (*[1 << 30]byte)(unsafe.Pointer(cbytes))[:length:length]
 	return slice
+}
+
+// IMAGE PREPROCESSING UTILITY FUNCTIONS
+
+func NormalizeImageHWC(in *image.NRGBA, mean []float32, scale float32) ([]float32, error) {
+	height := in.Bounds().Dy()
+	width := in.Bounds().Dx()
+	out := make([]float32, 3*height*width)
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			offset := y*width + x*3
+			rgb := in.Pix[offset : offset+3]
+			r, g, b := rgb[0], rgb[1], rgb[2]
+			out[offset+0] = (float32(r) - mean[0]) / scale
+			out[offset+1] = (float32(g) - mean[1]) / scale
+			out[offset+2] = (float32(b) - mean[2]) / scale
+		}
+	}
+	return out, nil
+}
+
+// SORTING UTILITY FUNCTIONS
+
+type Predictions struct {
+	Indexes []int
+	Probabilities []float32
+}
+
+// Implement sort.Interface Len
+func (s Predictions) Len() int { return len(s.Indexes) }
+
+// Implement sort.Interface Less
+func (s Predictions) Less(i, j int) bool { return s.Probabilities[i] > s.Probabilities[j] }
+
+// Implment sort.Interface Swap
+func (s Predictions) Swap(i, j int) {
+	// swap value
+	s.Probabilities[i], s.Probabilities[j] = s.Probabilities[j], s.Probabilities[i]
+	// swap index
+	s.Indexes[i], s.Indexes[j] = s.Indexes[j], s.Indexes[i]
 }

@@ -6,13 +6,13 @@ Refer to [Tensorflow detection model zoo](https://github.com/tensorflow/models/b
 
 ### The input and output nodes of the graph
 
-| Node Name         | Input/Output | Shape     | Data Description                                                                                         |
-| ----------------- | ------------ | --------- | -------------------------------------------------------------------------------------------------------- |
-| image_tensor      | Input        | [1,?,?,3] | RGB pixel values as uint8 in a square format (Width, Height). The first column represent the batch size. |
-| detection_boxes   | Output       | [?][4]    | Array of boxes for each detected object in the format [yMin, xMin, yMax, xMax]                           |
-| detection_scores  | Output       | [?]       | Array of probability scores for each detected object between 0..1                                        |
-| detection_classes | Output       | [?]       | Array of object class indices for each object detected based on COCO objects                             |
-| num_detections    | Output       | [1]       | Number of detections                                                                                     |
+| Node Name         | Input/Output | Shape                      | Data Description                                                                                         |
+| ----------------- | ------------ | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| image_tensor      | Input        | [batch, height, width, 3]  | RGB pixel values as uint8 in a square format (Width, Height). The first column represent the batch size. |
+| detection_boxes   | Output       | [batch, num_detections, 4] | Array of boxes for each detected object in the format [yMin, xMin, yMax, xMax]                           |
+| detection_scores  | Output       | [batch, num_detections]    | Array of probability scores for each detected object between 0 and 1                                     |
+| detection_classes | Output       | [batch, num_detections]    | Array of object class indices for each object detected based on COCO objects                             |
+| num_detections    | Output       | [batch]                    | Number of detections                                                                                     |
 
 ### Usage
 
