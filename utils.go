@@ -78,7 +78,7 @@ func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 
 		log.Println(err)
 	}
 
-	overlay := imaging.Overlay(img, segScaled, image.Pt(int(x1), int(y1)), 1.0)
+	overlay := imaging.Overlay(img, segScaled, image.Pt(int(x1), int(y1)), 0.5)
 	rgba := &image.RGBA{
 	Pix:    overlay.Pix,
 	Stride: overlay.Stride,
@@ -248,12 +248,12 @@ func NormalizeImageHWC(in *image.NRGBA, mean []float32, scale float32) ([]float3
 	out := make([]float32, 3*height*width)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			offset := y*width + x*3
-			rgb := in.Pix[offset : offset+3]
-			r, g, b := rgb[0], rgb[1], rgb[2]
-			out[offset+0] = (float32(r) - mean[0]) / scale
-			out[offset+1] = (float32(g) - mean[1]) / scale
-			out[offset+2] = (float32(b) - mean[2]) / scale
+			outOffset := 3*(y*width + x)
+			nrgba := in.NRGBAAt(x,y)
+			r, g, b :=nrgba.R,nrgba.G,nrgba.B
+			out[outOffset+0] = (float32(r) - mean[0]) / scale
+			out[outOffset+1] = (float32(g) - mean[1]) / scale
+			out[outOffset+2] = (float32(b) - mean[2]) / scale
 		}
 	}
 	return out, nil

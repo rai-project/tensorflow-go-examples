@@ -1,8 +1,8 @@
 ## Image Classification
 
-The example uses [BVLC-AlexNet](s3.amazonaws.com/store.carml.org/models/tensorflow/models/bvlc_alexnet_1.0/frozen_model.pb) and [synset](http://data.dmlc.ml/mxnet/models/imagenet/synset.txt).
+The example uses [MobileNet_v1_1.0_224](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz) and [synset1001.txt](http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset1001.txt).
 
-The frozen graph is converted from Caffe BVLC-AlexNet. Refer to [Caffe BVLC-AlexNet](https://github.com/BVLC/caffe/tree/master/models/bvlc_alexnet) for more details.
+Refer to [TensorFlow MobileNet](https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md) for more details.
 
 ### The input and output nodes of the graph
 
@@ -16,3 +16,5 @@ The frozen graph is converted from Caffe BVLC-AlexNet. Refer to [Caffe BVLC-Alex
 `go run main.go -dir=<model folder> -jpg=<input.jpg> [-labels=<labels.txt>]`
 
 ### References
+
+- https://github.com/Zehaos/MobileNet/blob/master/preprocessing/mobilenet_preprocessing.py

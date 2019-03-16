@@ -17,7 +17,7 @@ func main() {
 	// Parse flags
 	modeldir := flag.String("dir", "", "Directory containing trained model files. Assumes model file is called frozen_inference_graph.pb")
 	jpgfile := flag.String("jpg", "platypus.jpg", "Path of a JPG image to use for input")
-	labelfile := flag.String("labels", "imagenet_synset.txt", "Path to file of COCO labels, one per line")
+	labelfile := flag.String("labels", "synset1001.txt", "Path to file of COCO labels, one per line")
 	flag.Parse()
 	if *modeldir == "" || *jpgfile == "" {
 		flag.Usage()
@@ -28,7 +28,7 @@ func main() {
 	labels := utils.LoadLabels(*labelfile)
 
 	// Load a frozen graph to use for queries
-	modelpath := filepath.Join(*modeldir, "frozen_model.pb")
+	modelpath := filepath.Join(*modeldir, "mobilenet_v1_1.0_224_frozen.pb")
 	model, err := ioutil.ReadFile(modelpath)
 	if err != nil {
 		log.Fatal(err)
@@ -52,10 +52,10 @@ func main() {
 		log.Fatalf("failed to open image: %v", err)
 	}
 
-	height := 227
-	width := 227
-	resized := imaging.Resize(img, width, height, imaging.Lanczos)
-	imgFloats, err := utils.NormalizeImageHWC(resized, []float32{123, 117, 104}, 1.0)
+	height := 224
+	width := 224
+	resized := imaging.Resize(img, width, height, imaging.Linear)
+	imgFloats, err := utils.NormalizeImageHWC(resized, []float32{128, 128, 128}, 128)
 	if err != nil {
 		panic(err)
 	}
@@ -72,10 +72,10 @@ func main() {
 	}
 
 	// Input op
-	inputop := graph.Operation("data")
+	inputop := graph.Operation("input")
 
 	// Output ops
-	o1 := graph.Operation("prob")
+	o1 := graph.Operation("MobilenetV1/Predictions/Reshape_1")
 
 	// Execute COCO Graph
 	output, err := session.Run(
@@ -99,5 +99,7 @@ func main() {
 	preds := utils.Predictions{Probabilities: probabilities, Indexes: idxs}
 	sort.Sort(preds)
 
-	pp.Println(preds.Indexes[0], labels[preds.Indexes[0]], preds.Probabilities[0])
+	for ii := 0; ii < 2; ii++ {
+		pp.Println(preds.Indexes[ii], labels[preds.Indexes[ii]], preds.Probabilities[ii])
+	}
 }
