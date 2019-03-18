@@ -56,7 +56,7 @@ func Rect(img *image.RGBA, x1, y1, x2, y2, width int, col color.Color) {
 }
 
 // Segment draws a rectangle utilizing HLine() and VLine()
-func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 float32) *image.RGBA{
+func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 float32) *image.RGBA {
 	height := len(mask)
 	width := len(mask[0])
 	seg := image.NewRGBA(image.Rect(0, 0, width, height))
@@ -80,11 +80,11 @@ func Segment(img *image.RGBA, mask [][]float32, col color.Color, x1, y1, x2, y2 
 
 	overlay := imaging.Overlay(img, segScaled, image.Pt(int(x1), int(y1)), 0.5)
 	rgba := &image.RGBA{
-	Pix:    overlay.Pix,
-	Stride: overlay.Stride,
-	Rect:   overlay.Rect,
+		Pix:    overlay.Pix,
+		Stride: overlay.Stride,
+		Rect:   overlay.Rect,
 	}
-	
+
 	return rgba
 }
 
@@ -147,6 +147,34 @@ func AddLabel(img *image.RGBA, x, y, class int, label string) {
 
 // TENSOR UTILITY FUNCTIONS
 
+func DecodeJpegGraph() (graph *tf.Graph, input, output tf.Output, err error) {
+	s := op.NewScope()
+	input = op.Placeholder(s, tf.String)
+	dctMethod := op.DecodeJpegDctMethod("INTEGER_ACCURATE")
+	// dctMethod := op.DecodeJpegDctMethod("INTEGER_FAST")
+	output = op.ExpandDims(s,
+		op.DecodeJpeg(s, input, op.DecodeJpegChannels(3), dctMethod),
+		op.Const(s.SubScope("make_batch"), int32(0)))
+	graph, err = s.Finalize()
+	return graph, input, output, err
+}
+
+func DecodeJpegNormalizeGraph(height int32, width int32) (graph *tf.Graph, input, output tf.Output, err error) {
+	s := op.NewScope()
+	input = op.Placeholder(s, tf.String)
+	dctMethod := op.DecodeJpegDctMethod("INTEGER_ACCURATE")
+	output =
+		op.Cast(s,
+			op.ResizeBilinear(s,
+				op.ExpandDims(s,
+					op.DecodeJpeg(s, input, op.DecodeJpegChannels(3), dctMethod),
+					op.Const(s.SubScope("make_batch"), int32(0))),
+				op.Const(s.SubScope("size"), []int32{height, width})),
+			tf.Uint8)
+	graph, err = s.Finalize()
+	return graph, input, output, err
+}
+
 func MakeTensorFromImage(filename string) (*tf.Tensor, image.Image, error) {
 	b, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -186,6 +214,54 @@ func MakeTensorFromImage(filename string) (*tf.Tensor, image.Image, error) {
 	return normalized[0], img, nil
 }
 
+func max(x, y int) int {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func MakeTensorFromResizedImage(filename string, inputSize int32) (*tf.Tensor, image.Image, int, int, error) {
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+
+	r := bytes.NewReader(b)
+	img, _, err := image.Decode(r)
+	width := img.Bounds().Max.X
+	height := img.Bounds().Max.Y
+	resizeRatio := float32(inputSize) / float32(max(width, height))
+	targetWidth := int32(resizeRatio * float32(width))
+	targetHeight := int32(resizeRatio * float32(height))
+
+	// DecodeJpeg uses a scalar String-valued tensor as input.
+	tensor, err := tf.NewTensor(string(b))
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+
+	// Creates a tensorflow graph to decode the jpeg image
+	graph, input, output, err := DecodeJpegNormalizeGraph(targetHeight, targetWidth)
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+	// Execute that graph to decode this one image
+	session, err := tf.NewSession(graph, nil)
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+	defer session.Close()
+	normalized, err := session.Run(
+		map[tf.Output]*tf.Tensor{input: tensor},
+		[]tf.Output{output},
+		nil)
+	if err != nil {
+		return nil, nil, 0, 0, err
+	}
+	return normalized[0], img, int(targetWidth), int(targetHeight), nil
+}
+
 func ReshapeTensorFloats(data [][]float32, shape []int64) (*tf.Tensor, error) {
 	N, H, W, C := shape[0], shape[1], shape[2], shape[3]
 	tensor := make([][][][]float32, N)
@@ -204,18 +280,6 @@ func ReshapeTensorFloats(data [][]float32, shape []int64) (*tf.Tensor, error) {
 		tensor[n] = tn
 	}
 	return tf.NewTensor(tensor)
-}
-
-func DecodeJpegGraph() (graph *tf.Graph, input, output tf.Output, err error) {
-	s := op.NewScope()
-	input = op.Placeholder(s, tf.String)
-	dctMethod := op.DecodeJpegDctMethod("INTEGER_ACCURATE")
-	// dctMethod := op.DecodeJpegDctMethod("INTEGER_FAST")
-	output = op.ExpandDims(s,
-		op.DecodeJpeg(s, input, op.DecodeJpegChannels(3), dctMethod),
-		op.Const(s.SubScope("make_batch"), int32(0)))
-	graph, err = s.Finalize()
-	return graph, input, output, err
 }
 
 func TensorPtrC(t *tf.Tensor) *C.TF_Tensor {
@@ -248,9 +312,9 @@ func NormalizeImageHWC(in *image.NRGBA, mean []float32, scale float32) ([]float3
 	out := make([]float32, 3*height*width)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			outOffset := 3*(y*width + x)
-			nrgba := in.NRGBAAt(x,y)
-			r, g, b :=nrgba.R,nrgba.G,nrgba.B
+			outOffset := 3 * (y*width + x)
+			nrgba := in.NRGBAAt(x, y)
+			r, g, b := nrgba.R, nrgba.G, nrgba.B
 			out[outOffset+0] = (float32(r) - mean[0]) / scale
 			out[outOffset+1] = (float32(g) - mean[1]) / scale
 			out[outOffset+2] = (float32(b) - mean[2]) / scale
@@ -262,7 +326,7 @@ func NormalizeImageHWC(in *image.NRGBA, mean []float32, scale float32) ([]float3
 // SORTING UTILITY FUNCTIONS
 
 type Predictions struct {
-	Indexes []int
+	Indexes       []int
 	Probabilities []float32
 }
 

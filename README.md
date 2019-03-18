@@ -1,6 +1,6 @@
 # TensorFlow Go Examples
 
-This repo contains end-to-end examples of model inference using TensorFlow Go API. More are comming.
+This repo contains end-to-end examples of model inference using TensorFlow Go API. More are coming.
 
 ## Models
 

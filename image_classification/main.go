@@ -72,7 +72,7 @@ func main() {
 	}
 
 	// Input op
-	inputop := graph.Operation("input")
+	inputOp := graph.Operation("input")
 
 	// Output ops
 	o1 := graph.Operation("MobilenetV1/Predictions/Reshape_1")
@@ -80,7 +80,7 @@ func main() {
 	// Execute COCO Graph
 	output, err := session.Run(
 		map[tf.Output]*tf.Tensor{
-			inputop.Output(0): tensor,
+			inputOp.Output(0): tensor,
 		},
 		[]tf.Output{
 			o1.Output(0),

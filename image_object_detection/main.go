@@ -65,7 +65,7 @@ func main() {
 	draw.Draw(img, b, i, b.Min, draw.Src)
 
 	// Input op
-	inputop := graph.Operation("image_tensor")
+	inputOp := graph.Operation("image_tensor")
 
 	// Output ops
 	o1 := graph.Operation("detection_boxes")
@@ -76,7 +76,7 @@ func main() {
 	// Execute COCO Graph
 	output, err := session.Run(
 		map[tf.Output]*tf.Tensor{
-			inputop.Output(0): tensor,
+			inputOp.Output(0): tensor,
 		},
 		[]tf.Output{
 			o1.Output(0),
