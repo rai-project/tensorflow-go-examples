@@ -1,13 +1,15 @@
 # TensorFlow Go Examples
 
 This repo contains end-to-end examples of model inference using TensorFlow Go API. More are coming.
+Contributions with similar simple examples (or by further improving existing examples) are highly welcome. Please file a pull request or an issue on GitHub, or contact me at <cli99@illinois.edu>.
 
 ## Models
 
 - [Image Classification](image_classification)
 - [Image Object Detection](image_object_detection)
-- [Image Instance Segmentation](image_semantic_segmentation)
-- [image_semantic_segmentation](image_semantic_segmentation)
+- [Image Instance Segmentation](image_instance_segmentation)
+- [image Semantic Segmentation](image_semantic_segmentation)
+- [image Enhancement](image_semantic_segmentation)
 
 ## TensorFlow Go API
 

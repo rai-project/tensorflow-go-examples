@@ -151,10 +151,11 @@ func DecodeJpegGraph() (graph *tf.Graph, input, output tf.Output, err error) {
 	s := op.NewScope()
 	input = op.Placeholder(s, tf.String)
 	dctMethod := op.DecodeJpegDctMethod("INTEGER_ACCURATE")
-	// dctMethod := op.DecodeJpegDctMethod("INTEGER_FAST")
-	output = op.ExpandDims(s,
-		op.DecodeJpeg(s, input, op.DecodeJpegChannels(3), dctMethod),
-		op.Const(s.SubScope("make_batch"), int32(0)))
+	output =
+		op.ExpandDims(s,
+			op.DecodeJpeg(s, input,
+				op.DecodeJpegChannels(3), dctMethod),
+			op.Const(s.SubScope("make_batch"), int32(0)))
 	graph, err = s.Finalize()
 	return graph, input, output, err
 }
