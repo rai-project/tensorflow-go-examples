@@ -20,4 +20,5 @@ Refer to [Tensorflow detection model zoo](https://github.com/tensorflow/models/b
 
 ### References
 
+- [Run an Instance Segmentation Model](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/instance_segmentation.md)
 - TensorFlow [visualization_utils](https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py)

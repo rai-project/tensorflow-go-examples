@@ -17,6 +17,7 @@ Refer to [TensorFlow DeepLab Model Zoo](https://github.com/tensorflow/models/blo
 
 ### References
 
-- [DeepLab Demo](https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb）
+- [DeepLab Demo](https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb
+- [Semantic Segmentation Suite in TensorFlow](https://github.com/GeorgeSeif/Semantic-Segmentation-Suite)
 - TensorFlow [visualization_utils](https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py)
 - [An overview of semantic image segmentation](https://www.jeremyjordan.me/semantic-segmentation/)

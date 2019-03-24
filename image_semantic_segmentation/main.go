@@ -20,13 +20,20 @@ var LabelNames []string = []string{"background", "aeroplane", "bicycle", "bird",
 	"car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant",
 	"sheep", "sofa", "train", "tv"}
 
-func createPascalLabelColorMap() [256][3]int {
-	var colorMap [256][3]int
-	for ii := uint(8); ii > 0; ii-- {
+func createPascalLabelColorMap() [256][3]int32 {
+	var colorMap [256][3]int32
+	var ind [256]int32
+	for ii := 0; ii < 256; ii++ {
+		ind[ii] = int32(ii)
+	}
+	for shift := 7; shift >= 0; shift-- {
 		for jj := 0; jj < 256; jj++ {
-			for kk := uint(0); kk > 3; kk++ {
-				colorMap[jj][kk] |= ((jj >> kk) & 1) << ii
+			for kk := 0; kk < 3; kk++ {
+				colorMap[jj][kk] |= ((ind[jj] >> uint(kk)) & 1) << uint(shift)
 			}
+		}
+		for jj := range ind {
+			ind[jj] >>= 3
 		}
 	}
 	return colorMap
@@ -100,6 +107,7 @@ func main() {
 	seg := output[0].Value().([][][]int64)[0]
 
 	colorMap := createPascalLabelColorMap()
+	// pp.Println(colorMap)
 	imgSeg := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
 	for w := 0; w < targetWidth; w++ {
 		for h := 0; h < targetHeight; h++ {
