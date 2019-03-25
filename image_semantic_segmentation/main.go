@@ -39,15 +39,6 @@ func createPascalLabelColorMap() [256][3]int32 {
 	return colorMap
 }
 
-// // Crude colormap copied from python version. Only 21 entries because PASCAL VOC only has 21 classes
-// var (
-// 	colorMap = [21][3]uint8{{0, 0, 0}, {128, 0, 0}, {0, 128, 0}, {128, 128, 0},
-// 		{0, 0, 128}, {128, 0, 128}, {0, 128, 128}, {128, 128, 128},
-// 		{64, 0, 0}, {192, 0, 0}, {64, 128, 0}, {192, 128, 0},
-// 		{64, 0, 128}, {192, 0, 128}, {64, 128, 128}, {192, 128, 128},
-// 		{0, 64, 0}, {128, 64, 0}, {0, 192, 0}, {128, 192, 0}, {0, 64, 128}}
-// )
-
 func main() {
 	// Parse flags
 	modeldir := flag.String("dir", "", "Directory containing trained model files. Assumes model file is called frozen_inference_graph.pb")
@@ -107,7 +98,6 @@ func main() {
 	seg := output[0].Value().([][][]int64)[0]
 
 	colorMap := createPascalLabelColorMap()
-	// pp.Println(colorMap)
 	imgSeg := image.NewRGBA(image.Rect(0, 0, targetWidth, targetHeight))
 	for w := 0; w < targetWidth; w++ {
 		for h := 0; h < targetHeight; h++ {
@@ -120,7 +110,7 @@ func main() {
 	}
 
 	imgResized := imaging.Resize(img, targetWidth, targetHeight, imaging.Linear)
-	imgOut := imaging.Overlay(imgResized, imgSeg, image.ZP, 0.5)
+	imgOut := imaging.Overlay(imgResized, imgSeg, image.ZP, 0.7)
 
 	// Output JPG file
 	outfile, err := os.Create(*outjpg)

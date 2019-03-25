@@ -1,6 +1,6 @@
 ## Image Semantic Segmentation
 
-The example uses [mobilenetv2_coco_voc_trainaug	](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz) trained on PASCAL VOC 2012.
+The example uses DeepLab [mobilenetv2_coco_voc_trainaug](http://download.tensorflow.org/models/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz) trained on PASCAL VOC 2012.
 
 Refer to [TensorFlow DeepLab Model Zoo](https://github.com/tensorflow/models/blob/master/research/deeplab/g3doc/model_zoo.md) and [DeepLab: Deep Labelling for Semantic Image Segmentation](https://github.com/tensorflow/models/tree/master/research/deeplab) for more details.
 
@@ -18,6 +18,6 @@ Refer to [TensorFlow DeepLab Model Zoo](https://github.com/tensorflow/models/blo
 ### References
 
 - [DeepLab Demo](https://github.com/tensorflow/models/blob/master/research/deeplab/deeplab_demo.ipynb
-- [Semantic Segmentation Suite in TensorFlow](https://github.com/GeorgeSeif/Semantic-Segmentation-Suite)
+- [](https://github.com/GeorgeSeif/Semantic-Segmentation-Suite)
 - TensorFlow [visualization_utils](https://github.com/tensorflow/models/blob/master/research/object_detection/utils/visualization_utils.py)
 - [An overview of semantic image segmentation](https://www.jeremyjordan.me/semantic-segmentation/)
