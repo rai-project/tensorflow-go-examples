@@ -17,7 +17,7 @@ func main() {
 	// Parse flags
 	modeldir := flag.String("dir", "", "Directory containing trained model files. Assumes model file is called frozen_inference_graph.pb")
 	jpgfile := flag.String("jpg", "platypus.jpg", "Path of a JPG image to use for input")
-	labelfile := flag.String("labels", "synset1001.txt", "Path to file of COCO labels, one per line")
+	labelfile := flag.String("labels", "synset1.txt", "Path to file of COCO labels, one per line")
 	flag.Parse()
 	if *modeldir == "" || *jpgfile == "" {
 		flag.Usage()
@@ -99,7 +99,7 @@ func main() {
 	preds := utils.Predictions{Probabilities: probabilities, Indexes: idxs}
 	sort.Sort(preds)
 
-	for ii := 0; ii < 2; ii++ {
+	for ii := 0; ii < 1; ii++ {
 		pp.Println(preds.Indexes[ii], labels[preds.Indexes[ii]], preds.Probabilities[ii])
 	}
 }

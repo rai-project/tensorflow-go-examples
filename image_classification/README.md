@@ -1,6 +1,6 @@
 ## Image Classification
 
-The example uses [MobileNet_v1_1.0_224](http://download.tensorflow.org/models/mobilenet_v1_2018_02_22/mobilenet_v1_1.0_224.tgz) and [synset1001.txt](http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset1001.txt).
+The example uses [MobileNet_v1_1.0_224](http://download.tensorflow.org/models/mobilenet_v1_2018_08_02/mobilenet_v1_1.0_224.tgz) and [synset1.txt](http://s3.amazonaws.com/store.carml.org/synsets/imagenet/synset1.txt).
 
 Refer to [TensorFlow MobileNet](https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.md) for more details.
 

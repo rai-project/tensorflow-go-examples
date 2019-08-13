@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/k0kubun/pp"
+
 	utils "github.com/rai-project/tensorflow-go-examples"
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"golang.org/x/image/colornames"
@@ -93,6 +95,15 @@ func main() {
 	boxes := output[0].Value().([][][]float32)[0]
 	probabilities := output[1].Value().([][]float32)[0]
 	classes := output[2].Value().([][]float32)[0]
+
+	m := float32(0.0)
+	for i, e := range probabilities {
+		if i == 0 || e > m {
+			m = e
+		}
+	}
+
+	pp.Println(m)
 
 	// Draw a box around the objects with a probability larger than threshold
 	curObj := 0

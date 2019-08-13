@@ -12,6 +12,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/k0kubun/pp"
+
 	"github.com/disintegration/imaging"
 	utils "github.com/rai-project/tensorflow-go-examples"
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
@@ -28,6 +30,7 @@ func drawImagefromArray(input [][][]float32, fileName string, width, height int)
 			img.Set(w, h, color.RGBA{R, G, B, 255})
 		}
 	}
+	pp.Println(img.At(0, 0))
 
 	// Save to output.png
 	out, _ := os.Create(fileName)
@@ -179,6 +182,6 @@ func main() {
 
 	hrImage := output[0].Value().([][][][]float32)[0]
 	width, height = len(hrImage[0]), len(hrImage)
-
+	pp.Println(width, height)
 	drawImagefromArray(hrImage, *outPng, len(hrImage[0]), len(hrImage))
 }

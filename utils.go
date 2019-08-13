@@ -7,7 +7,6 @@ package utils
 import "C"
 
 import (
-	"github.com/k0kubun/pp"
 	"bufio"
 	"bytes"
 	"fmt"
