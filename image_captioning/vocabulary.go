@@ -4,21 +4,20 @@ import (
 	"bufio"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 )
 
 type vocabularyT struct {
-	vocab        map[string]int
-	reverseVocab map[int]string
-	startID      int
-	endID        int
-	unknownID    int
+	vocab        map[string]int64
+	reverseVocab map[int64]string
+	startID      int64
+	endID        int64
+	unknownID    int64
 }
 
 func constructVocabulary(vocabFile string) (vocabulary vocabularyT) {
-	vocab := make(map[string]int)
-	reverseVocab := make(map[int]string)
+	vocab := make(map[string]int64)
+	reverseVocab := make(map[int64]string)
 	startWord := "<S>"
 	endWord := "</S>"
 	unknownWord := "<UNK>"
@@ -30,13 +29,15 @@ func constructVocabulary(vocabFile string) (vocabulary vocabularyT) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	id := 0
 	for scanner.Scan() {
 		// fmt.Println(scanner.Text())
 		wordPair := strings.Split(scanner.Text(), " ")
 		word := wordPair[0]
-		id, _ := strconv.Atoi(wordPair[1])
-		vocab[word] = id
-		reverseVocab[id] = word
+		// id, _ := strconv.Atoi(wordPair[1])
+		vocab[word] = int64(id)
+		reverseVocab[int64(id)] = word
+		id++
 	}
 
 	if err := scanner.Err(); err != nil {

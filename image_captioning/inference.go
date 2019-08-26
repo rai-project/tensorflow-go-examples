@@ -9,9 +9,10 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
+	"strings"
 
 	tf "github.com/tensorflow/tensorflow/tensorflow/go"
 	"github.com/tensorflow/tensorflow/tensorflow/go/op"
@@ -71,42 +72,65 @@ func constructGraphToNormalizeImage(x, y int) (graph *tf.Graph, input, output tf
 	H = int32(346)
 	s := op.NewScope()
 	input = op.Placeholder(s, tf.String)
+	image := op.DecodeJpeg(s, input, op.DecodeJpegChannels(3))
+	image = op.Cast(s, image, tf.Float)
+	// NormalizedImage := op.Div(s, jpegImage, op.Max(s, jpegImage, op.Const(s.SubScope("max"), []int32{0, 1, 2})))
+	image = op.Div(s, image, op.Const(s, float32(255)))
 	output =
 		op.ResizeBilinear(s,
 			op.ExpandDims(s,
-				op.Cast(s,
-					op.DecodeJpeg(s, input, op.DecodeJpegChannels(3)),
-					tf.Float),
+				image,
 				op.Const(s.SubScope("make_batch"), int32(0))),
 			op.Const(s.SubScope("size"), []int32{H, W}))
 	graph, err = s.Finalize()
 	return graph, input, output, W, H, err
 }
 
-// reference: https://github.com/galeone/tfgo/blob/master/ops.go
-func batchify(scope *op.Scope, tensors []tf.Output) tf.Output {
-	s := scope.SubScope("batchify")
-	// Batchify a single value, means add batch dimension and return
-	if len(tensors) == 1 {
-		return op.ExpandDims(s.SubScope("ExpandDims"), tensors[0], op.Const(s.SubScope("axis"), []int32{0}))
+func batchify(tensors []*tf.Tensor) (packedTensor *tf.Tensor) {
+	s := op.NewScope()
+	var pack []tf.Output
+	for i := 0; i < len(tensors); i++ {
+		input := op.Placeholder(s.SubScope("input"), tf.Float)
+		pack = append(pack, input)
 	}
-	var tensors4d []tf.Output
-	for _, tensor := range tensors {
-		tensors4d = append(tensors4d, op.ExpandDims(s.SubScope("ExpandDims"), tensor, op.Const(s.SubScope("axis"), []int32{0})))
+	output := op.Pack(s, pack)
+
+	graph, err := s.Finalize()
+	if err != nil {
+		panic(err.Error())
 	}
-	return op.ConcatV2(s.SubScope("ConcatV2"), tensors4d, op.Const(s.SubScope("axis"), int32(0)))
+
+	session, err := tf.NewSession(graph, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer session.Close()
+
+	inputFeed := make(map[tf.Output]*tf.Tensor)
+	for i := 0; i < len(tensors); i++ {
+		inputFeed[pack[i]] = tensors[i]
+	}
+	batchOutput, err := session.Run(
+		inputFeed,
+		[]tf.Output{output},
+		nil)
+	if err != nil {
+		fmt.Println("input image conversion to tensor error", err)
+	}
+
+	return batchOutput[0]
 }
 
 type argSort struct {
 	Args []float32
-	Idxs []int
+	Idxs []int64
 }
 
 // Implement sort.Interface Len
 func (s argSort) Len() int { return len(s.Args) }
 
 // Implement sort.Interface Less
-func (s argSort) Less(i, j int) bool { return s.Args[i] > s.Args[j] }
+func (s argSort) Less(i, j int) bool { return s.Args[i] < s.Args[j] }
 
 // Implment sort.Interface Swap
 func (s argSort) Swap(i, j int) {
@@ -117,6 +141,7 @@ func (s argSort) Swap(i, j int) {
 }
 
 func main() {
+	os.Setenv("TF_CPP_MIN_LOG_LEVEL", "2")
 	// Parse flags
 	modeldir := "./"
 	jpgfile := "./COCO_val2014_000000224477.jpg"
@@ -138,7 +163,6 @@ func main() {
 		fmt.Println(err)
 		log.Fatal(err)
 	}
-	fmt.Println(reflect.TypeOf(graph))
 
 	// Create a session for inference over graph.
 	session, err := tf.NewSession(graph, nil)
@@ -173,15 +197,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// // Outputs
-	// fmt.Println(reflect.TypeOf(output))
-	// initialState := output[0].Value().([][]float32)
-	// fmt.Println(reflect.TypeOf(initialState))
-	// for i := 0; i < 256; i++ {
-	// 	for j := 0; j < 4; j++ {
-	// 		fmt.Printf("%f\t", initialState[0][i*4+j])
+	// ptInit := initialState[0].Value().([][]float32)
+	// for i, val := range ptInit[0] {
+	// 	fmt.Printf("%e ", val)
+	// 	if i%4 == 0 && i != 0 {
+	// 		fmt.Printf("\n")
 	// 	}
-	// 	fmt.Printf("\n")
 	// }
 
 	// Beam Search
@@ -192,41 +213,51 @@ func main() {
 	vocabFilename := "./word_counts_p.txt"
 	vocab := constructVocabulary(vocabFilename)
 
+	initialStateArray, _ := tf.NewTensor(initialState[0].Value().([][]float32)[0])
 	initialBeam := caption{
-		sentence: []int{vocab.startID},
-		state:    *initialState[0],
+		sentence: []int64{vocab.startID},
+		state:    initialStateArray,
 		logprob:  0.0,
 		score:    0.0}
 
 	partialCaption := &topN{n: beamSize}
 	heap.Init(partialCaption)
+	partialCaption.PushTopN(initialBeam)
+
 	completeCaption := &topN{n: beamSize}
 	heap.Init(completeCaption)
-
-	partialCaption.PushTopN(initialBeam)
 
 	intermediateInputFeed := graph.Operation("input_feed")
 	intermediateStateFeed := graph.Operation("lstm/state_feed")
 	softmaxOp := graph.Operation("softmax")
 	stateOp := graph.Operation("lstm/state")
 
-	for i := 0; i < maxCaptionLength; i++ {
+	for i := 0; i < maxCaptionLength-1; i++ {
 		partialCaptionList := partialCaption.Extract()
 		partialCaption.Reset()
 
-		inputFeed := []int{}
-		stateFeed := []tf.Tensor{}
-		for idx, cap := range partialCaptionList {
-			inputFeed := []int{}
+		inputFeed := []int64{}
+		stateFeed := []*tf.Tensor{}
+		for _, cap := range partialCaptionList {
 			inputFeed = append(inputFeed, cap.sentence[len(cap.sentence)-1])
+			// fmt.Println(cap.state.Shape())
 			stateFeed = append(stateFeed, cap.state)
 		}
-		stateFeed := stackTensorList(stateFeed)
+		fmt.Println("inputFeed:", inputFeed)
+		inputTensor, err := tf.NewTensor(inputFeed)
+		if err != nil {
+			fmt.Println("inputTensor error:", err)
+		}
+		stateTensor := batchify(stateFeed)
 
-		softmaxOutput, stateOutput, err := session.Run(
+		// fmt.Println("stateTensor shape:", stateTensor)
+		// fmt.Printf("inputTensor shape: %v\n", inputTensor.Shape())
+		// fmt.Printf("stateTensor shape: %v\n", stateTensor.Shape())
+
+		intermediateOutput, err := session.Run(
 			map[tf.Output]*tf.Tensor{
-				intermediateInputFeed.Output(0): inputFeed,
-				intermediateStateFeed.Output(0): stateFeed,
+				intermediateInputFeed.Output(0): inputTensor,
+				intermediateStateFeed.Output(0): stateTensor,
 			},
 			[]tf.Output{
 				softmaxOp.Output(0),
@@ -234,48 +265,59 @@ func main() {
 			},
 			nil)
 		if err != nil {
-			fmt.Println("intermediate session run error", err)
+			fmt.Println("intermediate session run error:", err)
 			log.Fatal(err)
 		}
 
-		for idx, cap := range partialCaptionList {
-			wordProbabilities := softmaxOutput[idx].Value().([][]float32)[i]
-			state := stateOutput[idx]
+		softmaxOutput := intermediateOutput[0].Value().([][]float32)
+		stateOutput := intermediateOutput[1].Value().([][]float32)
+
+		for j, cap := range partialCaptionList {
+			wordProbabilities := softmaxOutput[j]
+			state := stateOutput[j]
+			fmt.Println(wordProbabilities[0:100])
+			// fmt.Println(state)
+			break
 
 			wordLen := len(wordProbabilities)
-			idxs := []int{}
-			for i := 0; i < wordLen; i++ {
-				idxs = append(idxs, i)
+			idxs := []int64{}
+			for idx := int64(0); idx < int64(wordLen); idx++ {
+				idxs = append(idxs, idx)
 			}
 			arg := argSort{Args: wordProbabilities, Idxs: idxs}
 			sort.Sort(arg)
-			mostLikelyWords := arg.Idxs[wordLen-beamSize : wordLen-1]
+			mostLikelyWords := arg.Idxs[wordLen-beamSize : wordLen]
+			fmt.Println(wordProbabilities[wordLen-beamSize : wordLen])
+			fmt.Println(mostLikelyWords)
 
-			for i := mostLikelyWords.Len(); i >= 0; i-- {
-				w := mostLikelyWords[i]
+			for k := len(mostLikelyWords) - 1; k >= 0; k-- {
+				w := mostLikelyWords[k]
 				p := wordProbabilities[w]
 				if p < 1e-12 {
 					continue
 				}
 
 				sentence := append(cap.sentence, w)
-				logprob := cap.logprob + float32(math.Log(p))
+				logprob := cap.logprob + float32(math.Log(float64(p)))
 				score := logprob
+				stateTensor, _ := tf.NewTensor(state)
+				// fmt.Println("inner stateTensor shape:", stateTensor.Shape())
 
 				if w == vocab.endID {
 					if lengthNormalizationFactor > 0 {
 						score /= float32(math.Pow(float64(len(sentence)), lengthNormalizationFactor))
 					}
+
 					beam := caption{
 						sentence: sentence,
-						state:    state,
+						state:    stateTensor,
 						logprob:  logprob,
 						score:    score}
 					completeCaption.PushTopN(beam)
 				} else {
 					beam := caption{
 						sentence: sentence,
-						state:    state,
+						state:    stateTensor,
 						logprob:  logprob,
 						score:    score}
 					partialCaption.PushTopN(beam)
@@ -292,7 +334,18 @@ func main() {
 	}
 
 	captions := completeCaption.Extract()
+	wordArray := []string{}
+	IDArray := []int64{}
 	for i, caption := range captions {
 		//print the final result
+		for _, wordID := range caption.sentence {
+			wordArray = append(wordArray, vocab.reverseVocab[wordID])
+			IDArray = append(IDArray, wordID)
+		}
+		predSentence := strings.Join(wordArray[1:len(wordArray)-1], " ")
+		fmt.Printf("%d) %s (p=%f)   ", i, predSentence, math.Exp(float64(caption.logprob)))
+		fmt.Println(IDArray)
+		wordArray = nil
+		IDArray = nil
 	}
 }
