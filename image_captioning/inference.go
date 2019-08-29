@@ -129,9 +129,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// ptInit := initialState[0].Value().([][]float32)
-	// fmt.Println(ptInit[0][:100])
-
 	// Beam Search
 	beamSize := 3
 	maxCaptionLength := 20
@@ -150,6 +147,7 @@ func main() {
 		score:    0.0,
 	}
 
+	//initialBeam comes from the CNN feature.
 	partialCaptions := &topN{n: beamSize}
 	heap.Init(partialCaptions)
 	partialCaptions.PushTopN(initialBeam)
@@ -178,8 +176,6 @@ func main() {
 		}
 		stateTensor := batchify(stateFeed)
 
-		// fmt.Printf("inputTensor shape: %v\n", inputTensor.Shape())
-
 		intermediateOutput, err := session.Run(
 			map[tf.Output]*tf.Tensor{
 				intermediateInputFeed.Output(0): inputTensor,
@@ -198,8 +194,10 @@ func main() {
 		softmaxOutput := intermediateOutput[0].Value().([][]float32)
 		stateOutput := intermediateOutput[1].Value().([][]float32)
 
-		// fmt.Printf("%d: inputFeed: %v\n", i, inputFeed)
 		for j, partialCaption := range partialCaptionsList {
+			// for partialCaption, get several most probable next words (default is beamSize = 3)
+			// argsort is from go-mxnet suggested by Cheng.
+			// The sorting is ascending so in the following loop they are accessed reversedly.
 			wordProbabilities := softmaxOutput[j]
 			state := stateOutput[j]
 
@@ -213,13 +211,11 @@ func main() {
 			mostLikelyWords := arg.Idxs[wordLen-beamSize : wordLen]
 			mostLikelyWordsProb := arg.Args[wordLen-beamSize : wordLen]
 
-			// fmt.Println(mostLikelyWords, mostLikelyWordsProb)
-
 			for k := len(mostLikelyWords) - 1; k >= 0; k-- {
 				w := mostLikelyWords[k]
 				p := mostLikelyWordsProb[k]
 				if p < 1e-12 {
-					continue
+					continue // avoid log(0)
 				}
 
 				sentence := make([]int64, len(partialCaption.sentence))
@@ -227,11 +223,7 @@ func main() {
 				sentence = append(sentence, w)
 				logprob := partialCaption.logprob + float32(math.Log(float64(p)))
 				score := logprob
-				// fmt.Println("sentence:", sentence)
-				// fmt.Println("word:", w, "->", p)
-				// fmt.Printf("sentence: %v, prob: %f\n", sentence, logprob)
 				newStateTensor, _ := tf.NewTensor(state)
-				// fmt.Println("inner stateTensor shape:", stateTensor.Shape())
 
 				if w == vocab.endID {
 					if lengthNormalizationFactor > 0 {
@@ -252,11 +244,6 @@ func main() {
 						score:    score,
 					}
 					partialCaptions.PushTopN(beam)
-					// fmt.Printf("heap: ")
-					// for _, c := range partialCaptions.captionHeap {
-					// 	fmt.Printf("%v", c.sentence)
-					// }
-					// fmt.Printf("\n")
 				}
 
 				if partialCaptions.Len() == 0 {
@@ -264,17 +251,11 @@ func main() {
 				}
 			}
 		}
-
-		// fmt.Printf("partialCaptions after round %d: ", i)
-		// for _, c := range partialCaptions.captionHeap {
-		// 	fmt.Printf("%v", c.sentence)
-		// }
-		// fmt.Printf("\n\n")
-		// if i == 2 {
-		// 	break
-		// }
 	}
 
+	// If we have no complete captions then fall back to the partial captions.
+	// But never output a mixture of complete and partial captions because a
+	// partial caption could have a higher score than all the complete captions.
 	if completeCaptions.Len() == 0 {
 		completeCaptions = partialCaptions
 	}
@@ -289,7 +270,6 @@ func main() {
 			wordArray = append(wordArray, vocab.reverseVocab[wordID])
 			IDArray = append(IDArray, wordID)
 		}
-		// predSentence := strings.Join(wordArray[:], " ")
 		predSentence := strings.Join(wordArray[1:len(wordArray)-1], " ")
 		fmt.Printf("%d) %s (p=%f)   ", i, predSentence, math.Exp(float64(caption.logprob)))
 		fmt.Println(IDArray)
