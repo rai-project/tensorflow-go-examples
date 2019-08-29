@@ -18,7 +18,10 @@ type topN struct {
 	n           int
 }
 
-func (t topN) Len() int           { return len(t.captionHeap) }
+func (t topN) Len() int {
+	return len(t.captionHeap)
+}
+
 func (t topN) Less(i, j int) bool { return t.captionHeap[i].score < t.captionHeap[j].score }
 func (t topN) Swap(i, j int) {
 	t.captionHeap[i], t.captionHeap[j] = t.captionHeap[j], t.captionHeap[i]
@@ -45,10 +48,16 @@ func (t *topN) PushTopN(x interface{}) {
 	}
 }
 
-func (t *topN) Extract() []caption {
-	var result []caption
-	for t.Len() > 0 {
-		result = append(result, heap.Pop(t).(caption))
+func (t *topN) Extract(sort bool) []caption {
+	result := []caption{}
+	if sort {
+		for t.Len() > 0 {
+			result = append(result, heap.Pop(t).(caption))
+		}
+	} else {
+		result = make([]caption, t.Len())
+		copy(result, t.captionHeap)
+		t.captionHeap = nil
 	}
 
 	return result
